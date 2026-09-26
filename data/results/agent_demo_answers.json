@@ -1,0 +1,12 @@
+[
+  {
+    "question": "What is the summary of the paper 'Agentic Retrieval-Augmented Generation for Knowledge-Intensive Tasks'?",
+    "ground_truth": "Retrieval-Augmented Generation (RAG) significantly improves large language model accuracy by grounding responses in retrieved passages.",
+    "answer": "The paper titled \"Agentic Retrieval-Augmented Generation for Knowledge-Intensive Tasks\" by Minh Nguyen and Hoang Le, published on May 20, 2026, discusses how Retrieval-Augmented Generation (RAG) enhances the accuracy of large language models by grounding their responses in retrieved passages. The authors investigate agentic multi-hop reasoning and the routing of information across diverse vector indices."
+  },
+  {
+    "question": "Who authored the paper 'Freshness SLAs for Real-Time LLM Knowledge Augmentation'?",
+    "ground_truth": "Bao Do, Linh Ngo",
+    "answer": "The paper \"Freshness SLAs for Real-Time LLM Knowledge Augmentation\" was authored by Bao Do and Linh Ngo."
+  }
+]

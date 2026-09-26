@@ -1,0 +1,191 @@
+{
+  "created_at": "2026-09-26T04:32:12.220789+00:00",
+  "seed": 42,
+  "input_rows": 24,
+  "output_rows": 22,
+  "corruption_counts": {
+    "drop_latest_records": 5,
+    "blank_summary": 3,
+    "inject_noise": 3,
+    "truncate_title": 3,
+    "stale_date": 8,
+    "duplicate_rows": 3
+  },
+  "events": [
+    {
+      "corruption": "drop_latest_records",
+      "paper_id": "10.1145/3637528.3671812",
+      "field": null,
+      "before": "2026-07-22",
+      "after": "<dropped>"
+    },
+    {
+      "corruption": "drop_latest_records",
+      "paper_id": "10.1145/3637528.3671808",
+      "field": null,
+      "before": "2026-07-19",
+      "after": "<dropped>"
+    },
+    {
+      "corruption": "drop_latest_records",
+      "paper_id": "10.1145/3637528.3671804",
+      "field": null,
+      "before": "2026-07-05",
+      "after": "<dropped>"
+    },
+    {
+      "corruption": "drop_latest_records",
+      "paper_id": "10.1145/3637528.3671807",
+      "field": null,
+      "before": "2026-06-25",
+      "after": "<dropped>"
+    },
+    {
+      "corruption": "drop_latest_records",
+      "paper_id": "10.1145/3637528.3671802",
+      "field": null,
+      "before": "2026-06-12",
+      "after": "<dropped>"
+    },
+    {
+      "corruption": "blank_summary",
+      "paper_id": "10.1145/3637528.3671824",
+      "field": "summary",
+      "before": "An extended empirical study on tatic benchmarks fail to capture domain drift in enterprise knowledge bases. We establish...",
+      "after": ""
+    },
+    {
+      "corruption": "blank_summary",
+      "paper_id": "10.1145/3637528.3671821",
+      "field": "summary",
+      "before": "An extended empirical study on ierarchical and semantic boundary chunking preserves code block contexts and markdown hea...",
+      "after": ""
+    },
+    {
+      "corruption": "blank_summary",
+      "paper_id": "10.1145/3637528.3671817",
+      "field": "summary",
+      "before": "An extended empirical study on valuating open-domain QA requires robust metrics. We benchmark semantic similarity, token...",
+      "after": ""
+    },
+    {
+      "corruption": "inject_noise",
+      "paper_id": "10.1145/3637528.3671810",
+      "field": "summary",
+      "before": "Embedding quality checks directly into data pipelines enables fail-closed governance. We show how Great Expectations sui...",
+      "after": "Embedding quality #@!$ checks directly \ufffd\ufffd into data pipelines enables fail-closed governance. 0xDEADBEEF We show #@!$ ho..."
+    },
+    {
+      "corruption": "inject_noise",
+      "paper_id": "10.1145/3637528.3671820",
+      "field": "summary",
+      "before": "An extended empirical study on single LLM is susceptible to confirmation bias when evaluating retrieved evidence. We dem...",
+      "after": "An extended empirical study on 0xDEADBEEF <<null>> single LLM is susceptible \ufffd\ufffd to 0xDEADBEEF confirmation bias when eva..."
+    },
+    {
+      "corruption": "inject_noise",
+      "paper_id": "10.1145/3637528.3671815",
+      "field": "summary",
+      "before": "An extended empirical study on oft-deletions in vector databases leave orphaned embeddings that lead to hallucinations. ...",
+      "after": "An extended ~~~~ empirical #@!$ study on oft-deletions in vector databases leave orphaned embeddings that lead to halluc..."
+    },
+    {
+      "corruption": "truncate_title",
+      "paper_id": "10.1145/3637528.3671822",
+      "field": "title",
+      "before": "Advanced Perspectives on Automated Data Quality Profiling with Great Expectations in CI/CD",
+      "after": "Advance"
+    },
+    {
+      "corruption": "truncate_title",
+      "paper_id": "10.1145/3637528.3671816",
+      "field": "title",
+      "before": "Advanced Perspectives on Freshness SLAs for Real-Time LLM Knowledge Augmentation",
+      "after": "Advance"
+    },
+    {
+      "corruption": "truncate_title",
+      "paper_id": "10.1145/3637528.3671805",
+      "field": "title",
+      "before": "Evaluating Retrieval Precision with Token F1 and LLM Judges",
+      "after": "Evaluat"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671822",
+      "field": "published",
+      "before": "2026-06-10",
+      "after": "2025-06-10"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671821",
+      "field": "published",
+      "before": "2026-06-09",
+      "after": "2025-06-09"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671820",
+      "field": "published",
+      "before": "2026-06-08",
+      "after": "2025-06-08"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671818",
+      "field": "published",
+      "before": "2026-06-06",
+      "after": "2025-06-06"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671817",
+      "field": "published",
+      "before": "2026-06-05",
+      "after": "2025-06-05"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671815",
+      "field": "published",
+      "before": "2026-06-03",
+      "after": "2025-06-03"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671813",
+      "field": "published",
+      "before": "2026-06-01",
+      "after": "2025-06-01"
+    },
+    {
+      "corruption": "stale_date",
+      "paper_id": "10.1145/3637528.3671805",
+      "field": "published",
+      "before": "2026-03-28",
+      "after": "2025-03-28"
+    },
+    {
+      "corruption": "duplicate_rows",
+      "paper_id": "10.1145/3637528.3671819",
+      "field": "paper_id",
+      "before": null,
+      "after": "10.1145/3637528.3671819"
+    },
+    {
+      "corruption": "duplicate_rows",
+      "paper_id": "10.1145/3637528.3671814",
+      "field": "paper_id",
+      "before": null,
+      "after": "10.1145/3637528.3671814"
+    },
+    {
+      "corruption": "duplicate_rows",
+      "paper_id": "10.1145/3637528.3671805",
+      "field": "paper_id",
+      "before": null,
+      "after": "10.1145/3637528.3671805"
+    }
+  ]
+}
