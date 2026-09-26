@@ -30,7 +30,7 @@
 | Hoạt động | Thành viên/module được hỗ trợ | Kết quả |
 | :--- | :--- | :--- |
 | Tích hợp QA Router & Testset Contract | Retrieval & Agent (`qa.py`, `agent.py`) | Định dạng câu hỏi bọc tiêu đề bài báo trong `'...'` giúp router trích xuất đúng ngữ cảnh chính xác 100% |
-| Tinh chỉnh cấu hình LLM Judge | Evaluation (`metrics.py`, `llm.py`) | Cấu hình model `gemini-3.8-flash` và thiết lập `max_retries=1` kèm cơ chế heuristic fallback khi gặp rate limit 429 |
+| Đối chiếu LLM Judge với ground truth | Evaluation (`metrics.py`) | Ground truth của test set có cùng định dạng với câu trả lời mà `qa.py` trích xuất, nên LLM judge (`gpt-4o-mini`) chấm 30/30 câu không cần fallback heuristic |
 
 ---
 
@@ -38,13 +38,13 @@
 
 | Nhiệm vụ đã thực hiện | File/hàm/artifact liên quan | Kết quả bàn giao | Cách xác minh |
 | :--- | :--- | :--- | :--- |
-| Xây dựng bộ test set 10 câu hỏi | `src/evaluation/testset.py`<br>`data/eval/test_set.json` | 10 câu hỏi phủ đủ 4 nhóm (`summary`, `authors`, `date`, `categories`) kèm ground-truth doc IDs | `python script/verify_cp2.py`<br>In ra: `Tín hiệu hoàn thành: Sinh được 10 câu hỏi test` |
-| Thiết lập Data Quality Gate GX 1.x | `src/observability/quality.py`<br>`data/quality/*_quality_report.json` | 4 Expectations thiết yếu: RowCount, NotNull, Unique, Length | `python script/verify_cp1.py`<br>In ra: `Quality check status = True` (Baseline) và `False` (Corrupted) |
-| Giám sát Freshness SLA | `src/observability/quality.py`<br>`data/quality/freshness_report.json` | Cảnh báo `is_fresh=False` khi tỷ lệ quá hạn 180 ngày > 25% | `python script/verify_cp1.py`<br>Baseline: `1/24` stale (4.2% -> `is_fresh=True`) |
+| Xây dựng bộ test set 10 câu hỏi | `src/evaluation/testset.py`<br>`data/eval/test_set.json` | 10 câu hỏi phủ đủ 4 nhóm (summary 3, authors 3, date 2, categories 2) kèm ground-truth doc IDs | Lệnh checkpoint bước 5 (`build_test_set`)<br>In ra: `Tín hiệu hoàn thành: Sinh được 10 câu hỏi test` |
+| Thiết lập Data Quality Gate GX 1.x | `src/observability/quality.py`<br>`data/quality/*_quality_report.json` | 4 loại Expectation (RowCount, NotNull ×3 cột, Unique, Length) = 6 checks | Lệnh checkpoint bước 4 (`run_data_quality_checks`)<br>In ra: `Quality check status = True`; trên corrupted: `success = False` |
+| Giám sát Freshness SLA | `src/observability/quality.py`<br>`data/quality/freshness_report.json` | Cảnh báo `is_fresh=False` khi tỷ lệ quá hạn 180 ngày > 25% | `data/quality/freshness_report.json`<br>Baseline: `1/24` stale (4.17% -> `is_fresh=True`) |
 | Xuất báo cáo đối chiếu 3 trạng thái | `src/observability/reporting.py`<br>`data/reports/corruption_report.md` | Bảng Markdown đối chiếu định lượng Baseline vs Corrupted vs Repaired | `python script/run_corruption_flow.py` xuất bảng đối chiếu đầy đủ |
 
 **Một output cụ thể do phần việc của tôi tạo ra:**
-Bảng đối chiếu tổng hợp 3 trạng thái trong [`data/reports/corruption_report.md`](file:///home/tu/VinLab/K4-L3B-DAY10-ByeByeWorld-DataPipelineDataObservability/data/reports/corruption_report.md) chứng minh hiện tượng suy giảm ngầm (Silent Failure) khi Retrieval Hit Rate sụt từ 100% xuống 50%, Token F1 giảm từ 1.0000 xuống 0.7729, và phục hồi trở lại 100% sau khi sửa chữa.
+Bảng đối chiếu tổng hợp 3 trạng thái trong [`data/reports/corruption_report.md`](../data/reports/corruption_report.md) chứng minh hiện tượng suy giảm ngầm (Silent Failure) khi Retrieval Hit Rate sụt từ 100% xuống 60%, Token F1 giảm từ 1.0 xuống 0.8, và phục hồi trở lại 100% sau khi sửa chữa.
 
 ---
 
@@ -66,22 +66,26 @@ Bảng đối chiếu tổng hợp 3 trạng thái trong [`data/reports/corrupti
    batch_def = data_asset.add_batch_definition_whole_dataframe("papers_batch")
    batch = batch_def.get_batch(batch_parameters={"dataframe": df})
    ```
-   Định nghĩa 4 Expectations thiết yếu:
-   - `ExpectTableRowCountToBeBetween(min_value=20, max_value=30)`: Chặn việc mất mát dữ liệu quy mô lớn (> 20% bản ghi).
-   - `ExpectColumnValuesToNotBeNull(column="paper_id")` & `ExpectColumnValuesToNotBeNull(column="title")`: Đảm bảo định danh bắt buộc.
-   - `ExpectColumnValuesToBeUnique(column="paper_id")`: Chặn trùng lặp DOI.
-   - `ExpectColumnValueLengthsToBeBetween(column="title", min_value=8)` & `(column="summary", min_value=20)`: Chặn tiêu đề hoặc tóm tắt bị cắt cụt.
+   Định nghĩa 4 loại Expectation thiết yếu (6 checks), gom vào một `ExpectationSuite` và validate một lần bằng `batch.validate(suite)`:
+   - `ExpectTableRowCountToBeBetween(min_value=5, max_value=5000)`: Chặn dataset rỗng hoặc phình bất thường.
+   - `ExpectColumnValuesToNotBeNull` cho 3 cột `paper_id`, `title`, `text_for_embedding`: Đảm bảo định danh và nội dung để embed.
+   - `ExpectColumnValuesToBeUnique(column="paper_id")`: Chặn trùng lặp DOI (ghost vectors).
+   - `ExpectColumnValueLengthsToBeBetween(column="summary", min_value=30)`: Chặn tóm tắt rỗng hoặc bị cắt cụt.
+
+   Kết quả rút gọn (tên expectation, cột, pass/fail, `unexpected_count`) cùng freshness được ghi vào `data/quality/{report_name}_quality_report.json`. `success = gx_success and is_fresh`.
 
 2. **Giám sát Freshness SLA:**
    - Tính tỷ lệ: `stale_ratio = (df["age_days"] > 180).sum() / len(df)`.
    - SLA vi phạm (`is_fresh = False`) khi `stale_ratio > 0.25` (25%).
 
 3. **Sinh Benchmark Test Set đa dạng:**
-   Tạo 10 câu hỏi bao phủ 4 nhóm nghiệp vụ với mẫu câu chuẩn hóa:
-   - `summary`: *"What is the summary of '{title}'?"* $\rightarrow$ Ground truth: `first_sentence(summary)`
-   - `authors`: *"Who authored '{title}'?"* $\rightarrow$ Ground truth: `authors_joined`
-   - `date`: *"When was '{title}' published?"* $\rightarrow$ Ground truth: `published`
-   - `categories`: *"What categories does '{title}' belong to?"* $\rightarrow$ Ground truth: `categories_joined`
+   Tạo 10 câu hỏi bao phủ 4 nhóm nghiệp vụ (xoay vòng → 3/3/2/2), mỗi câu về một bài khác nhau, với mẫu câu khớp từ khóa router của `qa.py`:
+   - `summary`: *"What is the summary of the paper '{title}'?"* $\rightarrow$ Ground truth: `first_sentence(summary)`
+   - `authors`: *"Who authored the paper '{title}'?"* $\rightarrow$ Ground truth: `authors_joined`
+   - `date`: *"When was the paper '{title}' published?"* $\rightarrow$ Ground truth: `published`
+   - `categories`: *"What categories does the paper '{title}' belong to?"* $\rightarrow$ Ground truth: `categories_joined`
+
+   Loại bài có dấu `'` trong tiêu đề (vì `qa.py` tách tiêu đề giữa hai dấu `'`), sắp xếp theo `paper_id` để test set tất định. Nếu một loại câu hỏi không còn bài phù hợp thì chuyển sang loại kế tiếp và in cảnh báo.
 
 4. **Tự động xuất báo cáo Markdown:**
    Hàm `generate_phase1_report` và `generate_corruption_report` tổng hợp metrics, kết quả validation GX và SLA Freshness thành file Markdown trực quan.
@@ -99,23 +103,22 @@ Bảng đối chiếu tổng hợp 3 trạng thái trong [`data/reports/corrupti
 ### Cách xác minh
 
 ```bash
-source .venv/bin/activate
-# Xác minh Quality Gate & Freshness (CP1):
-python script/verify_cp1.py
+# Xác minh Quality Gate & Freshness (checkpoint bước 4):
+python -c "from core.config import load_settings; from observability.quality import run_data_quality_checks; import pandas as pd; s=load_settings(); df=pd.read_json(s.paths.clean_json); res=run_data_quality_checks(df, s, 'test'); print('Tín hiệu hoàn thành: Quality check status =', res['success'])"
 
-# Xác minh Test Set (CP2):
-python script/verify_cp2.py
+# Xác minh Test Set (checkpoint bước 5):
+python -c "from core.config import load_settings; from evaluation.testset import build_test_set; import pandas as pd; s=load_settings(); df=pd.read_json(s.paths.clean_json); ts=build_test_set(df, s.paths.eval_testset); print(f'Tín hiệu hoàn thành: Sinh được {len(ts)} câu hỏi test')"
 
-# Chạy toàn bộ chu trình kiểm tra báo cáo (CP3 & CP5):
+# Chạy toàn bộ chu trình kiểm tra báo cáo:
 python script/run_phase1.py
 python script/run_corruption_flow.py
 ```
 
 - **Kết quả mong đợi:** 
-  - `verify_cp1.py`: `Quality check status = True`, `is_fresh = True`.
-  - `verify_cp2.py`: `Sinh được 10 câu hỏi test`.
+  - Bước 4: `Quality check status = True`, `is_fresh = True`.
+  - Bước 5: `Sinh được 10 câu hỏi test`.
   - `run_corruption_flow.py`: Báo cáo đối chiếu 3 trạng thái có đầy đủ số liệu chứng minh sụt giảm và phục hồi.
-- **Kết quả thực tế:** Cả 4 lệnh chạy thành công với exit code 0.
+- **Kết quả thực tế:** Cả 4 lệnh chạy thành công với exit code 0. Bước 4 in `True`, bước 5 in `10`; corrupted gate `FAIL` (unique `paper_id`: 6, độ dài `summary`: 3, stale 40.91%), repaired gate `PASS`.
 - **Artifact/log:** `data/quality/baseline_quality_report.json`, `data/quality/corrupted_quality_report.json`, `data/eval/test_set.json`, `data/reports/corruption_report.md`.
 
 ---
@@ -138,15 +141,15 @@ python script/run_corruption_flow.py
 
 - **Triệu chứng/lỗi nguyên văn:**
   ```text
-  ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota... limit: 5 requests per minute, model: gemini-3.8-flash. Please retry in 58s.'}}
+  ValueError: Khong du paper hop le cho cau hoi dang 'categories'.
   ```
-- **Lệnh hoặc bước tái hiện:** Chạy `python script/run_phase1.py` khi đánh giá liên tiếp 10 câu hỏi qua LLM Judge.
-- **Nguyên nhân gốc:** Quota tầng Free Tier của Google Gemini API giới hạn 5 requests/phút (5 RPM). Mặc định `ChatGoogleGenerativeAI` kích hoạt retry lũy tiến khiến tiến trình bị dừng (sleep) 60 giây nhiều lần.
+- **Lệnh hoặc bước tái hiện:** Chạy `build_test_set()` trên `papers_clean.json` được tạo từ dữ liệu Crossref API thật (thay vì raw snapshot của lab).
+- **Nguyên nhân gốc:** Cả 24 bản ghi Crossref thật không có trường `subject`, nên `categories_joined` rỗng ở mọi dòng. Bản đầu của `build_test_set()` yêu cầu mỗi loại câu hỏi phải có bài phù hợp và `raise` ngay khi thiếu.
 - **Cách xử lý:** 
-  1. Cấu hình `max_retries=1` cho model client trong [`src/retrieval/llm.py`](file:///home/tu/VinLab/K4-L3B-DAY10-ByeByeWorld-DataPipelineDataObservability/src/retrieval/llm.py#L16-L22).
-  2. Tận dụng cơ chế Fallback Heuristic Judge sẵn có trong `src/evaluation/metrics.py`: Nếu API tạm hết quota, hệ thống tự động fallback tính Token F1 chính xác mà không làm crash pipeline hay tắc nghẽn luồng chạy.
-- **Cách xác minh sau khi sửa:** Chạy lại `python script/run_phase1.py` và `python script/run_corruption_flow.py`, tiến trình hoàn thành mượt mà trong thời gian ngắn mà không bị treo.
-- **Điều học được:** Khi thiết kế hệ thống quan sát và đánh giá (Evaluation Observability), luôn phải có cơ chế Circuit Breaker / Fallback Heuristic để pipeline không bị phụ thuộc tuyệt đối vào độ khả dụng của dịch vụ LLM bên ngoài.
+  1. Thêm cơ chế chuyển loại câu hỏi: nếu một loại không còn bài phù hợp thì thử loại kế tiếp trong `QUESTION_PLAN` và in cảnh báo `[testset] Canh bao: ...`, thay vì crash.
+  2. Phối hợp với ingestion (Dũng) khôi phục raw snapshot của lab (có `subject`) để test set phủ đủ 4 loại.
+- **Cách xác minh sau khi sửa:** Trên dữ liệu API thật: sinh 10 câu (summary 5, authors 3, date 2) kèm cảnh báo. Trên snapshot: 10 câu phân bổ 3/3/2/2, không cảnh báo, và `qa.py` trích xuất khớp 10/10 ground truth khi được đưa đúng bài.
+- **Điều học được:** Bộ đánh giá phải kiểm tra độ đầy đủ của dữ liệu nguồn trước khi sinh câu hỏi; dữ liệu "đúng schema" vẫn có thể rỗng ở những trường mà evaluation phụ thuộc.
 
 ---
 
@@ -171,9 +174,9 @@ python script/run_corruption_flow.py
    - Giữ nguyên biến độc lập trong phương pháp luận thực nghiệm: Để đo lường chính xác tác động của Data Corruption và hiệu quả của Idempotent Repair, tập câu hỏi đánh giá và tiêu chuẩn chấm điểm phải hoàn toàn nhất quán. Nếu thay đổi test set giữa các pha, kết quả chênh lệch sẽ bị nhiễu do độ khó của câu hỏi chứ không phản ánh đúng chất lượng dữ liệu.
 
 5. **Repair được xem là thành công dựa trên artifact và metric nào?**
-   - **Về Metric:** `retrieval_hit_rate` phục hồi từ 50% lên 100%, `mean_token_f1` phục hồi từ 0.7729 lên 1.0000.
-   - **Về Observability:** Quality Gate chuyển từ `FAILED` sang `PASSED`; Freshness SLA chuyển từ `STALE` sang `FRESH`.
-   - **Về Artifact:** Dữ liệu sạch tái tạo tại `data/clean/papers_clean_repaired.json` có số dòng (24), nội dung và hash đồng nhất với `data/clean/papers_clean.json` ban đầu, được khôi phục trực tiếp từ raw snapshot bất biến.
+   - **Về Metric:** `retrieval_hit_rate` phục hồi từ 60% lên 100%, `mean_token_f1` phục hồi từ 0.8 lên 1.0.
+   - **Về Observability:** Quality Gate chuyển từ `FAIL` (4/6) sang `PASS` (6/6); Freshness SLA chuyển từ `STALE` (40.91%) sang `FRESH` (4.17%).
+   - **Về Artifact:** Dữ liệu sạch tái tạo tại `data/clean/papers_clean_repaired.json` có 24 dòng, nội dung (`paper_id`, `title`, `summary`, `published`, `text_for_embedding`) trùng khớp với `data/clean/papers_clean.json` ban đầu, được khôi phục trực tiếp từ raw snapshot bất biến.
 
 ---
 
@@ -183,20 +186,20 @@ python script/run_corruption_flow.py
 
 | Metric/signal | Baseline | Corrupted | Repaired | Nhận xét của cá nhân |
 | :--- | :---: | :---: | :---: | :--- |
-| `retrieval_hit_rate` | 100.00% | 50.00% | 100.00% | Bị sụt giảm một nửa do 20% bài bị drop và tiêu đề/abstract bị hỏng |
-| `mean_token_f1` | 1.0000 | 0.7729 | 1.0000 | Giảm mạnh do tóm tắt bị blank hoặc chèn chuỗi rác |
-| `judge_accuracy` | 100.00% | 80.00% | 100.00% | Các câu hỏi thuộc bài báo bị lỗi trả về sai hoặc không tìm thấy |
-| `mean_judge_score` | 5.00 | 3.80 | 5.00 | Điểm định tính sụt giảm rõ rệt theo chất lượng trả lời |
-| Quality checks | PASSED | FAILED | PASSED | GX 1.x phát hiện vi phạm Unique (duplicate rows) và RowCount |
-| Freshness status | FRESH | STALE | FRESH | Tỷ lệ stale vọt lên do bị tiêm bài lùi về năm 2023 |
+| `retrieval_hit_rate` | 100.00% | 60.00% | 100.00% | 4 câu miss: 3 do bài bị drop (eval_002/003/006), 1 do tiêu đề bị cắt (eval_010) |
+| `mean_token_f1` | 1.0000 | 0.8000 | 1.0000 | Giảm do 2 câu hỏi `date` trả về ngày đã bị lùi 365 ngày |
+| `judge_accuracy` | 100.00% | 80.00% | 100.00% | Cao hơn hit rate vì 3 câu `authors` lấy nhầm bài nhưng bài đó có cùng tác giả |
+| `mean_judge_score` | 5.00 | 4.30 | 5.00 | eval_003 = 1 điểm, eval_007 = 2 điểm |
+| Quality checks | PASS (6/6) | FAIL (4/6) | PASS (6/6) | GX 1.x phát hiện vi phạm Unique (6 giá trị trùng) và độ dài Summary (3 dòng rỗng) |
+| Freshness status | FRESH (4.17%) | STALE (40.91%) | FRESH (4.17%) | Stale date lùi `published` 365 ngày trên 8 dòng |
 
 ### Kết luận từ số liệu
 
-1. **Chuỗi 1 (Corruption):** Tiêm 6 lỗi dữ liệu (Drop, Blank, Noise, Truncate, Stale, Duplicate) $\rightarrow$ Quality Gate báo `FAILED` và Freshness báo `STALE` $\rightarrow$ Retrieval Hit Rate sụt giảm nghiêm trọng từ 100% xuống 50%, Token F1 giảm xuống 0.7729 (Minh chứng rõ nét hiện tượng **Silent Failure**).
-2. **Chuỗi 2 (Repair):** Kích hoạt Idempotent Repair tái tạo từ raw snapshot $\rightarrow$ Quality Gate trở lại `PASSED`, Freshness trở lại `FRESH` $\rightarrow$ Toàn bộ chỉ số Agent phục hồi 100% về trạng thái Baseline ban đầu.
+1. **Chuỗi 1 (Corruption):** Stale date (8 dòng) → Freshness `STALE` (40.91% > 25%) → câu hỏi `date` trả lời sai (eval_007 lấy đúng bài nhưng trả `2025-06-03`, judge 2/5) → Token F1 giảm xuống 0.8. Trong khi đó, drop latest records **không** làm gate báo lỗi (row count 22 vẫn trong 5–5000) nhưng làm Retrieval Hit Rate giảm xuống 60%: đây là **Silent Failure**.
+2. **Chuỗi 2 (Repair):** Kích hoạt Idempotent Repair tái tạo từ raw snapshot $\rightarrow$ Quality Gate trở lại `PASS` 6/6, Freshness trở lại `FRESH` $\rightarrow$ Toàn bộ chỉ số Agent phục hồi 100% về trạng thái Baseline ban đầu.
 
 **Corruption nào ảnh hưởng rõ nhất và vì sao?**
-- Lỗi **Drop 20% bài báo mới nhất** và **Blank Summary** ảnh hưởng nặng nhất. Khi bài báo bị drop, câu hỏi liên quan hoàn toàn không thể tìm thấy tài liệu gốc (Hit Rate = 0 cho các câu đó). Khi abstract bị xóa rỗng, câu trả lời suy biến thành chuỗi rỗng hoặc thông báo không tìm thấy, kéo sụt Token F1.
+- Lỗi **Drop 20% bài báo mới nhất** ảnh hưởng nặng nhất tới retrieval: 3 bài của test set bị xóa khỏi corpus nên không thể tìm thấy tài liệu gốc, và quality gate hiện tại không có luật nào bắt được lỗi này. Lỗi **Stale date** ảnh hưởng rõ nhất tới câu trả lời. Blank summary bị gate bắt được nhưng không rơi vào bài nào của test set, nên không làm giảm metric.
 
 ---
 
