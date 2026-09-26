@@ -17,7 +17,7 @@ TRUNCATED_TITLE_CHARS = 7  # < 8 ky tu
 STALE_RATIO = 0.40  # > 25% de vuot Freshness SLA
 STALE_SHIFT_DAYS = 365
 DUPLICATE_ROWS = 3
-NOISE_TOKENS = ["#@!$", "lorem", "%%ERR%%", "  ", "NaN", "<<null>>", "0xDEADBEEF", "~~~~"]
+NOISE_TOKENS = ["#@!$", "lorem", "%%ERR%%", "\ufffd\ufffd", "NaN", "<<null>>", "0xDEADBEEF", "~~~~"]
 
 
 def _pick(rng: random.Random, candidates: list[int], count: int) -> list[int]:
