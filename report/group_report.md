@@ -6,20 +6,18 @@
 
 | Thông tin         | Nội dung                  |
 | ------------------ | -------------------------- |
-| Khóa/Lớp         | [K3 hoặc K4]              |
-| Tên nhóm         | [Tên hoặc mã nhóm]     |
-| Repository         | [Đường dẫn repository] |
-| Ngày hoàn thành | [YYYY-MM-DD]               |
+| Khóa/Lớp         | K4             |
+| Tên nhóm         | ByeByeWorld     |
+| Repository         | https://github.com/hddung-vinai/K4-L3B-DAY10-ByeByeWorld-DataPipelineDataObservability |
+| Ngày hoàn thành | 26-9-2026               |
 
 ### Thành viên và phân công
 
 | STT | Họ và tên | MSSV | Vai trò chính | Module/deliverable sở hữu |
 | --: | --- | --- | --- | --- |
-| 1 | [Họ tên] | [MSSV] | [Vai trò] | [File, hàm hoặc artifact] |
-| 2 | [Họ tên] | [MSSV] | [Vai trò] | [File, hàm hoặc artifact] |
-| 3 | [Họ tên] | [MSSV] | [Vai trò] | [File, hàm hoặc artifact] |
-| 4 | [Nếu có] | [MSSV] | [Vai trò] | [File, hàm hoặc artifact] |
-| 5 | [Nếu có] | [MSSV] | [Vai trò] | [File, hàm hoặc artifact] |
+| 1 | Hoàng Đức Dũng | 2A202602798 | Data ingestion & cleaning owner | crossref.py, cleaning.py; thống nhất raw/clean schema |
+| 2 | Trần Tuấn Tú | 2A202602840 | Evaluation & observability owner | testset.py, quality.py, reporting.py |
+| 3 | Đào Duy Hiếu | 2A202602651 | Corruption & integration owner | corruption.py, phase1.py, corruption_flow.py; chạy tích hợp |
 
 ## 2. Tóm tắt kết quả
 
